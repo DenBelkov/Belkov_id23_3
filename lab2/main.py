@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QGraphicsEllipseItem,
 )
 import sys, random
-
+import json
 
 class Cabbage(QGraphicsEllipseItem):
     def __init__(self, x, y, r):
@@ -19,7 +19,8 @@ class Cabbage(QGraphicsEllipseItem):
 
 
 class Goat(QGraphicsEllipseItem):
-    def __init__(self, x, y, r, view):
+    def __init__(self, x, y, r, view, sets):
+        speed, endurance, fertility = sets
         super().__init__(0, 0, r, r)
         self.setPos(x, y)
         self.r = r
@@ -27,9 +28,9 @@ class Goat(QGraphicsEllipseItem):
         self.setBrush(Qt.black)
         self.setRect(QRectF(-r, -r, 2 * r, 2 * r))
 
-        self.speed = 0.25
-        self.endurance = 5
-        self.fertility = 0.25
+        self.speed = speed
+        self.endurance = endurance
+        self.fertility = fertility
 
     def move_to(self, x, y):
         dist = (((self.x() - x) ** 2 + (self.y() - y) ** 2) ** 0.5) * 10
@@ -56,7 +57,7 @@ class Goat(QGraphicsEllipseItem):
 
 
 class GraphicView(QGraphicsView):
-    def __init__(self):
+    def __init__(self, settings):
         super().__init__()
         scene = QGraphicsScene(self)
         self.setScene(scene)
@@ -65,17 +66,15 @@ class GraphicView(QGraphicsView):
         self.timer.timeout.connect(self.updscene)
         for _ in range(5):
             self.spawn_cab()
-        self.herd = Goat(300, 600, 10, self)
+        self.goat_settings = settings[:3]
+        self.eatspeed, self.hunger_rate = settings[3:]
+        self.herd = Goat(300, 600, 10, self, self.goat_settings)
         self.scene().addItem(self.herd)
         self.herd.find_next_cab()
         self.timer.start(1000)
         cabtimer = QTimer(self)
         cabtimer.timeout.connect(self.spawn_cab)
         cabtimer.start(5000)
-
-        self.hunger_rate = 2
-        self.default_end = 5
-        self.eatspeed = 1
 
     def spawn_cab(self):
         dot = random.sample(range(0, 600), 2)
@@ -88,7 +87,7 @@ class GraphicView(QGraphicsView):
             R = self.herd.r
             print(f'Популяция стада: {R}')
             self.herd.setRect(QRectF(-R, -R, 2 * R, 2 * R))
-            self.herd.endurance = self.default_end
+            self.herd.endurance = self.goat_settings[1]
         else:
             self.herd.endurance -= self.hunger_rate
 
@@ -102,7 +101,7 @@ class GraphicView(QGraphicsView):
         goat.setSpanAngle(180 * 16)
         self.etimer = QTimer(self)
         self.etimer.timeout.connect(self.bite)
-        goat.endurance = self.default_end
+        goat.endurance = self.goat_settings[1]
         self.etimer.start(1000)
 
     def bite(self):
@@ -126,8 +125,29 @@ class GraphicView(QGraphicsView):
             self.goat.setRect(QRectF(-R, -R, 2 * R, 2 * R))
 
 
+def load_settings():
+    try:
+        f = open("Ogorod_setting.json")
+        print("Файл с настройками открыт")
+        data = json.load(f)
+        return data
+    except FileNotFoundError:
+        data = {
+            "speed":0.25,
+            "self.endurance": 5,
+            "self.fertility": 0.25,
+            "hunger_rate": 2,
+            "eatspeed": 1
+        }
+        with open("Ogorod_setting.json", 'w') as f:
+            print("Файл с настройками создан")
+            json.dump(data, f)
+        return data
+
 if __name__ == "__main__":
+    settings = load_settings()
+    print(settings)
     app = QApplication(sys.argv)
-    view = GraphicView()
+    view = GraphicView(list(settings.values()))
     view.show()
     sys.exit(app.exec_())
