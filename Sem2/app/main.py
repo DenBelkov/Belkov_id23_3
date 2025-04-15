@@ -21,7 +21,7 @@ async def get():
 #     while True:
 #         data = await websocket.receive_text()
 #         await websocket.send_text(f"Message text was: {data}")
-# app.include_router(router)
+app.include_router(router)
 #
 # html = """
 # <!DOCTYPE html>
