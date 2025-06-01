@@ -1,4 +1,8 @@
+from pydantic import model_validator
+
 from app.schemas import GraphRequest, PathResult
+from app.celery import celery_app
+
 def branch_and_bound_tsp(distance_matrix):
     n = len(distance_matrix)
     min_distance = float('inf')
@@ -17,8 +21,9 @@ def branch_and_bound_tsp(distance_matrix):
     tsp(0, {0}, 0, [0])
     return best_route, min_distance
 
-def findShortestPath(graphR: GraphRequest):
-    graph = graphR.graph
+@celery_app.task
+def findShortestPath(graphR):
+    graph = GraphRequest.model_validate(graphR).graph
     distance_matrix = [[float('inf')] * len(graph.nodes) for _ in range(len(graph.nodes))]
     for row in graph.edges:
         distance_matrix[row[0] - 1][row[1] - 1] = 1
@@ -26,5 +31,5 @@ def findShortestPath(graphR: GraphRequest):
     for i in range(len(graph.nodes)):
         distance_matrix[i][i] = 0
     ans = branch_and_bound_tsp(distance_matrix)
-    if ans[1] >= float('inf'): return ("No answer")
-    return PathResult(path = list(map(lambda x: x+1, ans[0])), total_distance = float(ans[1]))
+    if ans[1] >= float('inf'): return {"error": "No answer"}
+    return {"path": list(map(lambda x: x+1, ans[0])), "total_distance": float(ans[1])}
